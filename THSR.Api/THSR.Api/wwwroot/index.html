@@ -1,0 +1,284 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <title>高鐵訂票系統 - 查詢車次</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            margin: 20px;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        .form-row {
+            margin-bottom: 10px;
+        }
+
+        label {
+            display: inline-block;
+            width: 80px;
+        }
+
+        select, input[type="date"] {
+            padding: 4px;
+            min-width: 150px;
+        }
+
+        button {
+            padding: 6px 12px;
+            cursor: pointer;
+        }
+
+        table {
+            border-collapse: collapse;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 6px 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        #message {
+            margin-top: 10px;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>高鐵訂票系統 - 車次查詢</h1>
+
+    <div id="search-form">
+        <div class="form-row">
+            <label for="departureStation">起站：</label>
+            <select id="departureStation"></select>
+        </div>
+        <div class="form-row">
+            <label for="arrivalStation">訖站：</label>
+            <select id="arrivalStation"></select>
+        </div>
+        <div class="form-row">
+            <label for="date">日期：</label>
+            <input type="date" id="date" />
+        </div>
+        <div class="form-row">
+            <label for="time">出發時間：</label>
+            <input type="time" id="time" />
+        </div>
+        <div class="form-row">
+            <button id="searchBtn">查詢車次</button>
+        </div>
+        <div id="message"></div>
+        <div style="text-align:right; margin-bottom:10px;">
+            <span id="welcomeText"></span>
+            <button onclick="logout()">登出</button>
+        </div>
+        <button onclick="location.href='orders.html'">我的訂單</button>
+    </div>
+
+    <table id="resultTable" style="display:none;">
+        <thead>
+            <tr>
+                <th>車次編號</th>
+                <th>起站</th>
+                <th>訖站</th>
+                <th>出發時間</th>
+                <th>到達時間</th>
+                <th>總座位數</th>
+                <th>剩餘座位（目前同總座位）</th>
+            </tr>
+        </thead>
+        <tbody id="resultBody">
+        </tbody>
+    </table>
+
+    <script>
+        const apiBase = ""; // 同一個網站就留空，之後如果前後端分離可改成 http://...
+
+        const loginUserId = localStorage.getItem("userId");
+        const loginUserName = localStorage.getItem("userName");
+        
+
+        if (!loginUserId) {
+            window.location.href = "login.html";
+        } else {
+            // 已登入就顯示歡迎文字
+            document.addEventListener("DOMContentLoaded", () => {
+                const welcome = document.getElementById("welcomeText");
+                if (welcome && loginUserName) {
+                    welcome.textContent = `歡迎，${loginUserName}`;
+                }
+            });
+        }
+        function logout() {
+            // 清除登入資訊
+            localStorage.removeItem("userId");
+            localStorage.removeItem("userName");
+            localStorage.removeItem("userEmail");
+
+            // 回到登入頁
+            window.location.href = "login.html";
+        }
+
+        async function loadStations() {
+            try {
+                const res = await fetch(apiBase + "/api/stations");
+                if (!res.ok) {
+                    throw new Error("取得車站失敗，狀態碼：" + res.status);
+                }
+                const stations = await res.json();
+
+                const depSelect = document.getElementById("departureStation");
+                const arrSelect = document.getElementById("arrivalStation");
+
+                depSelect.innerHTML = "";
+                arrSelect.innerHTML = "";
+
+                stations.forEach(st => {
+                    const opt1 = document.createElement("option");
+                    opt1.value = st.stationID;
+                    opt1.textContent = st.stationName;
+                    depSelect.appendChild(opt1);
+
+                    const opt2 = document.createElement("option");
+                    opt2.value = st.stationID;
+                    opt2.textContent = st.stationName;
+                    arrSelect.appendChild(opt2);
+                });
+
+                // 預設選台北 -> 台中（如果有的話）
+                const taipei = stations.find(s => s.stationName.includes("台北"));
+                const taichung = stations.find(s => s.stationName.includes("台中"));
+                if (taipei) depSelect.value = taipei.stationID;
+                if (taichung) arrSelect.value = taichung.stationID;
+
+                // 預設今天日期
+                const today = new Date().toISOString().substring(0, 10);
+                document.getElementById("date").value = today;
+
+            } catch (err) {
+                document.getElementById("message").textContent = err.message;
+            }
+        }
+
+        async function searchTrains() {
+            const depId = document.getElementById("departureStation").value;
+            const arrId = document.getElementById("arrivalStation").value;
+            const date = document.getElementById("date").value;
+            const time = document.getElementById("time").value;
+
+            const messageEl = document.getElementById("message");
+            const table = document.getElementById("resultTable");
+            const tbody = document.getElementById("resultBody");
+
+            // 先清空畫面
+            messageEl.textContent = "";
+            tbody.innerHTML = "";
+            table.style.display = "none";
+
+            // 基本檢查
+            if (!depId || !arrId || !date) {
+                messageEl.textContent = "請選擇起站、訖站與日期。";
+                return;
+            }
+            if (depId === arrId) {
+                messageEl.textContent = "起訖站不能相同。";
+                return;
+            }
+
+            // 組查詢 URL（有時間就加 time 參數）
+            let url = `${apiBase}/api/trains/search?departureStationId=${depId}&arrivalStationId=${arrId}&date=${date}`;
+            if (time) {
+                url += `&time=${encodeURIComponent(time)}`;
+            }
+
+            console.log("查詢 URL = " + url);
+
+            try {
+                const res = await fetch(url);
+                if (!res.ok) {
+                    const errText = await res.text();
+                    messageEl.textContent = `查詢失敗：${res.status} ${errText}`;
+                    return;
+                }
+
+                const trains = await res.json();
+
+                if (!trains || trains.length === 0) {
+                    messageEl.textContent = "查無符合條件的車次。";
+                    return;
+                }
+
+                // 把查詢結果畫到表格
+                trains.forEach(t => {
+                    const tr = document.createElement("tr");
+
+                    const depTime = new Date(t.departureTime);
+                    const arrTime = new Date(t.arrivalTime);
+
+                    const formatTime = dt =>
+                        dt.getHours().toString().padStart(2, '0') + ":" +
+                        dt.getMinutes().toString().padStart(2, '0');
+
+                    tr.innerHTML = `
+                <td>${t.trainNo}</td>
+                <td>${t.departureStation}</td>
+                <td>${t.arrivalStation}</td>
+                <td>${formatTime(depTime)}</td>
+                <td>${formatTime(arrTime)}</td>
+                <td>${t.totalSeats}</td>
+                <td>${t.remainingSeats}</td>
+                <td>
+                    <button onclick="bookTrain(
+                        ${t.trainID},
+                        '${t.trainNo}',
+                        '${t.departureStation}',
+                        '${t.arrivalStation}',
+                        '${t.departureTime}',
+                        '${t.arrivalTime}',
+                        ${t.remainingSeats}
+                    )">訂票</button>
+                </td>
+            `;
+                    tbody.appendChild(tr);
+                });
+
+                table.style.display = "";
+
+            } catch (err) {
+                console.error(err);
+                messageEl.textContent = "系統錯誤：" + err.message;
+            }
+        }
+
+        function bookTrain(trainId, trainNo, depStation, arrStation, depTime, arrTime, remainingSeats) {
+            localStorage.setItem("selectedTrainId", trainId);
+            localStorage.setItem("selectedTrainNo", trainNo);
+            localStorage.setItem("selectedDepStation", depStation);
+            localStorage.setItem("selectedArrStation", arrStation);
+            localStorage.setItem("selectedDepTime", depTime);
+            localStorage.setItem("selectedArrTime", arrTime);
+            localStorage.setItem("selectedRemainingSeats", remainingSeats);
+
+            window.location.href = "book.html";
+        }
+
+
+
+        document.getElementById("searchBtn").addEventListener("click", searchTrains);
+
+        // 頁面載入時先載入車站列表
+        loadStations();
+    </script>
+</body>
+</html>

@@ -1,0 +1,230 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <title>訂單明細 - 高鐵訂票系統</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            margin: 20px;
+        }
+
+        h1, h2 {
+            margin-bottom: 10px;
+        }
+
+        table {
+            border-collapse: collapse;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 6px 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        #message {
+            margin-top: 10px;
+            color: red;
+        }
+
+        #success {
+            margin-top: 10px;
+            color: green;
+        }
+
+        .top-bar {
+            text-align: right;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 4px 8px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <button onclick="goBack()">回到訂單列表</button>
+        <button onclick="goSearch()">回到查詢</button>
+        <button onclick="logout()">登出</button>
+    </div>
+
+    <h1>訂單明細</h1>
+
+    <div id="orderInfo"></div>
+
+    <h2>票券資訊</h2>
+    <table id="ticketTable" style="display:none;">
+        <thead>
+            <tr>
+                <th>票券編號</th>
+                <th>乘客姓名</th>
+                <th>座位</th>
+                <th>票種</th>
+                <th>價格</th>
+                <th>狀態</th>
+            </tr>
+        </thead>
+        <tbody id="ticketBody">
+        </tbody>
+    </table>
+
+    <div class="form-row">
+        <button id="cancelBtn">取消訂單</button>
+    </div>
+
+    <div id="message"></div>
+    <div id="success"></div>
+
+    <script>
+        const apiBase = "";
+        const userId = localStorage.getItem("userId");
+        if (!userId) {
+            window.location.href = "login.html";
+        }
+
+        function getQueryParam(name) {
+            const url = new URL(window.location.href);
+            return url.searchParams.get(name);
+        }
+
+        const orderId = getQueryParam("orderId");
+        if (!orderId) {
+            document.getElementById("message").textContent = "缺少 orderId 參數。";
+        } else {
+            loadOrderDetail();
+        }
+
+        function goBack() {
+            window.location.href = "orders.html";
+        }
+
+        function goSearch() {
+            window.location.href = "index.html";
+        }
+
+        function logout() {
+            localStorage.removeItem("userId");
+            localStorage.removeItem("userName");
+            localStorage.removeItem("userEmail");
+            window.location.href = "login.html";
+        }
+
+        async function loadOrderDetail() {
+            const msg = document.getElementById("message");
+            const okMsg = document.getElementById("success");
+            const infoDiv = document.getElementById("orderInfo");
+            const table = document.getElementById("ticketTable");
+            const tbody = document.getElementById("ticketBody");
+
+            msg.textContent = "";
+            okMsg.textContent = "";
+            infoDiv.innerHTML = "";
+            tbody.innerHTML = "";
+            table.style.display = "none";
+
+            try {
+                const res = await fetch(`${apiBase}/api/orders/${orderId}`);
+                if (!res.ok) {
+                    const text = await res.text();
+                    msg.textContent = "載入訂單明細失敗：" + text;
+                    return;
+                }
+
+                const data = await res.json();
+
+                const orderTime = new Date(data.orderTime);
+                const depTime = new Date(data.departureTime);
+                const arrTime = new Date(data.arrivalTime);
+
+                const fmtDateTime = dt =>
+                    dt.getFullYear() + "-" +
+                    (dt.getMonth() + 1).toString().padStart(2, '0') + "-" +
+                    dt.getDate().toString().padStart(2, '0') + " " +
+                    dt.getHours().toString().padStart(2, '0') + ":" +
+                    dt.getMinutes().toString().padStart(2, '0');
+
+                infoDiv.innerHTML = `
+                    <p>訂單編號：${data.orderId}</p>
+                    <p>訂單時間：${fmtDateTime(orderTime)}</p>
+                    <p>車次：${data.trainNo}</p>
+                    <p>行程：${data.departureStation} → ${data.arrivalStation}</p>
+                    <p>出發時間：${fmtDateTime(depTime)}</p>
+                    <p>到達時間：${fmtDateTime(arrTime)}</p>
+                    <p>總金額：${data.totalAmount}</p>
+                    <p>狀態：<span id="orderStatus">${data.status}</span></p>
+                `;
+
+                if (data.tickets && data.tickets.length > 0) {
+                    data.tickets.forEach(t => {
+                        const tr = document.createElement("tr");
+                        tr.innerHTML = `
+                            <td>${t.ticketId}</td>
+                            <td>${t.passengerName}</td>
+                            <td>${t.seatNumber ?? ""}</td>
+                            <td>${t.ticketType}</td>
+                            <td>${t.price}</td>
+                            <td>${t.status}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    table.style.display = "";
+                }
+
+                // 若訂單已取消，停用取消按鈕
+                if (data.status === "Canceled") {
+                    document.getElementById("cancelBtn").disabled = true;
+                }
+
+            } catch (err) {
+                msg.textContent = "載入訂單明細時發生錯誤：" + err.message;
+            }
+        }
+
+        async function cancelOrder() {
+            const msg = document.getElementById("message");
+            const okMsg = document.getElementById("success");
+            const statusSpan = document.getElementById("orderStatus");
+
+            msg.textContent = "";
+            okMsg.textContent = "";
+
+            if (!confirm("確定要取消這筆訂單嗎？")) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`${apiBase}/api/orders/${orderId}/cancel`, {
+                    method: "POST"
+                });
+
+                if (!res.ok) {
+                    const text = await res.text();
+                    msg.textContent = "取消訂單失敗：" + text;
+                    return;
+                }
+
+                okMsg.textContent = "訂單已成功取消。";
+                if (statusSpan) {
+                    statusSpan.textContent = "Canceled";
+                }
+                document.getElementById("cancelBtn").disabled = true;
+
+            } catch (err) {
+                msg.textContent = "取消訂單時發生錯誤：" + err.message;
+            }
+        }
+
+        document.getElementById("cancelBtn").addEventListener("click", cancelOrder);
+    </script>
+</body>
+</html>

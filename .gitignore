@@ -1,0 +1,13 @@
+﻿# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Build 輸出
+bin/
+obj/
+**/bin/
+**/obj/
+
+# 其他暫存
+*.log

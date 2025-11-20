@@ -1,0 +1,843 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <title>訂票 - 高鐵訂票系統</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+
+        header {
+            background: #1976d2;
+            color: #fff;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+            header .nav-links a {
+                color: #fff;
+                margin-left: 12px;
+                text-decoration: none;
+            }
+
+                header .nav-links a:hover {
+                    text-decoration: underline;
+                }
+
+        .userText {
+            margin-right: 8px;
+            font-size: 14px;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 20px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+        .info-row {
+            margin-bottom: 8px;
+        }
+
+        .info-label {
+            display: inline-block;
+            width: 80px;
+            color: #555;
+        }
+
+        select, input {
+            padding: 6px 8px;
+            font-size: 14px;
+        }
+
+        .seat-area {
+            margin-top: 20px;
+        }
+
+        .seat-legend span {
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        .seat-grid {
+            display: inline-block;
+            border: 1px solid #ccc;
+            padding: 10px 12px;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+
+        .seat-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .seat-row-label {
+            width: 20px;
+            text-align: right;
+            margin-right: 4px;
+            font-size: 13px;
+        }
+
+        .seat {
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            border: 1px solid #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            user-select: none;
+            background: #fff;
+            box-sizing: border-box;
+        }
+
+            .seat.selected {
+                background: #1976d2;
+                color: white;
+                border-color: #0d47a1;
+            }
+
+            .seat.occupied {
+                background: #ccc;
+                color: #777;
+                border-color: #aaa;
+                cursor: not-allowed;
+            }
+
+            .seat.placeholder {
+                border: none;
+                background: transparent;
+                cursor: default;
+            }
+
+        .passenger-form {
+            margin-top: 20px;
+        }
+
+        .passenger-item {
+            margin-bottom: 8px;
+        }
+
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+
+        .success {
+            color: green;
+            margin-top: 10px;
+        }
+
+        button {
+            padding: 8px 16px;
+            font-size: 14px;
+            background: #43a047;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+            button:hover {
+                background: #2e7d32;
+            }
+
+        #priceSummary {
+            margin-top: 12px;
+            font-size: 14px;
+        }
+
+            #priceSummary table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 6px;
+            }
+
+            #priceSummary th, #priceSummary td {
+                border: 1px solid #ddd;
+                padding: 4px 6px;
+                text-align: center;
+            }
+
+            #priceSummary th {
+                background: #f0f0f0;
+            }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div><strong>高鐵訂票系統 - 訂票</strong></div>
+        <div style="display:flex; align-items:center;">
+            <div id="authArea" style="margin-right: 10px;"></div>
+            <div class="nav-links">
+                <a href="index.html">查詢車次</a>
+                <a href="myorders.html">我的訂單</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <h2>確認車次與行程</h2>
+        <div id="tripInfo"></div>
+
+        <hr />
+
+        <div>
+            <div class="info-row">
+                <span class="info-label">車廂：</span>
+                <select id="carNumberSelect"></select>
+            </div>
+            <div class="info-row">
+                <span class="info-label">人數：</span>
+                <select id="passengerCountSelect">
+                    <option value="1">1 位</option>
+                    <option value="2">2 位</option>
+                    <option value="3">3 位</option>
+                    <option value="4">4 位</option>
+                </select>
+            </div>
+            <div class="info-row">
+                <span class="info-label">座位偏好：</span>
+                <select id="seatPreference">
+                    <option value="any">不指定</option>
+                    <option value="window">靠窗</option>
+                    <option value="aisle">靠走道</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="seat-area">
+            <h3>選擇座位（依實際車廂配置）</h3>
+            <div class="seat-legend">
+                <span>🟦 已選</span>
+                <span>⬜ 可選</span>
+                <span>⬛ 已被訂（無法選）</span>
+            </div>
+
+            <div id="seatGrid" class="seat-grid"></div>
+        </div>
+
+        <div class="passenger-form">
+            <h3>乘客資料</h3>
+            <div id="passengerList"></div>
+        </div>
+
+        <div id="msg" class="error"></div>
+        <div id="successMsg" class="success"></div>
+        <div id="priceSummary"></div>
+
+        <div style="margin-top:16px;">
+            <button id="submitOrderBtn">送出訂單</button>
+            <button id="searchReturnBtn" style="margin-left:10px; display:none;">查詢回程</button>
+            <a href="index.html" style="margin-left:10px;">回到查詢</a>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script>
+        const tripInfoDiv = document.getElementById("tripInfo");
+        const carNumberSelect = document.getElementById("carNumberSelect");
+        const passengerCountSelect = document.getElementById("passengerCountSelect");
+        const seatPreferenceSelect = document.getElementById("seatPreference");
+        const seatGridDiv = document.getElementById("seatGrid");
+        const passengerListDiv = document.getElementById("passengerList");
+        const msgDiv = document.getElementById("msg");
+        const successDiv = document.getElementById("successMsg");
+        const priceSummaryDiv = document.getElementById("priceSummary");
+        const submitOrderBtn = document.getElementById("submitOrderBtn");
+        const searchReturnBtn = document.getElementById("searchReturnBtn");
+
+        const SEAT_COLUMNS = ["A", "B", "C", "D", "E"];
+
+        let selectedSeatKeys = new Set();
+        let occupiedSeatKeys = new Set();
+        let seatLayout = []; // 從 /api/seats/layout 抓到的座位清單
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const auth = getAuth();
+            refreshAuthUI();
+
+            if (!auth || !auth.token) {
+                alert("請先登入再進行訂票");
+                window.location.href = "login.html";
+                return;
+            }
+
+            initTripInfo();
+            initCarNumberSelect();
+            buildPassengerInputs();
+
+            loadSeatLayoutAndBuildGrid();
+
+            passengerCountSelect.addEventListener("change", () => {
+                buildPassengerInputs();
+                clearSeatSelection();
+            });
+
+            carNumberSelect.addEventListener("change", () => {
+                clearSeatSelection();
+                loadSeatLayoutAndBuildGrid();
+            });
+
+            searchReturnBtn.addEventListener("click", () => {
+                const url = buildReturnSearchUrl();
+                window.location.href = url;
+            });
+        });
+
+        function getUrl() {
+            return new URL(window.location.href);
+        }
+
+        function safeIntParam(url, name) {
+            const v = url.searchParams.get(name);
+            if (!v) return null;
+            const n = parseInt(v, 10);
+            return Number.isNaN(n) ? null : n;
+        }
+
+        function initTripInfo() {
+            const url = getUrl();
+            const trainNo = url.searchParams.get("trainNo");
+            let travelDate = url.searchParams.get("travelDate");
+            const departDateTime = url.searchParams.get("departDateTime");
+            const arriveDateTime = url.searchParams.get("arriveDateTime");
+
+            let departStr = "";
+            let arriveStr = "";
+
+            if (departDateTime) {
+                const d = new Date(departDateTime);
+                departStr = d.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
+                if (!travelDate) {
+                    travelDate = d.toISOString().substring(0, 10);
+                }
+            }
+
+            if (arriveDateTime) {
+                const a = new Date(arriveDateTime);
+                arriveStr = a.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
+            }
+
+            tripInfoDiv.innerHTML = `
+                    <div class="info-row"><span class="info-label">車次：</span><span>${trainNo || ""}</span></div>
+                    <div class="info-row"><span class="info-label">日期：</span><span>${travelDate || ""}</span></div>
+                    <div class="info-row"><span class="info-label">出發時間：</span><span>${departStr}</span></div>
+                    <div class="info-row"><span class="info-label">到達時間：</span><span>${arriveStr}</span></div>
+                `;
+        }
+
+        function initCarNumberSelect() {
+            carNumberSelect.innerHTML = "";
+            for (let i = 1; i <= 12; i++) {
+                const opt = document.createElement("option");
+                opt.value = i;
+                opt.textContent = `${i} 車`;
+                carNumberSelect.appendChild(opt);
+            }
+            carNumberSelect.value = "6";
+        }
+
+        async function loadSeatLayoutAndBuildGrid() {
+            seatLayout = [];
+            seatGridDiv.innerHTML = "載入座位配置中...";
+
+            const carNumber = parseInt(carNumberSelect.value, 10);
+            if (!carNumber) return;
+
+            try {
+                const resp = await fetch(`/api/seats/layout?carNumber=${carNumber}`);
+                if (!resp.ok) {
+                    console.error("讀取座位配置失敗", resp.status);
+                    seatGridDiv.innerHTML = "<div style='color:red;'>讀取座位配置失敗</div>";
+                    return;
+                }
+
+                seatLayout = await resp.json();
+                buildSeatGridFromLayout();
+                await refreshSeatOccupancy();
+            } catch (err) {
+                console.error("讀取座位配置錯誤", err);
+                seatGridDiv.innerHTML = "<div style='color:red;'>讀取座位配置錯誤</div>";
+            }
+        }
+
+        function buildSeatGridFromLayout() {
+            seatGridDiv.innerHTML = "";
+            selectedSeatKeys.clear();
+
+            if (!Array.isArray(seatLayout) || seatLayout.length === 0) {
+                seatGridDiv.innerHTML = "<div>目前沒有座位配置</div>";
+                return;
+            }
+
+            const rowsMap = new Map();
+            seatLayout.forEach(s => {
+                if (!rowsMap.has(s.seatRow)) {
+                    rowsMap.set(s.seatRow, []);
+                }
+                rowsMap.get(s.seatRow).push(s);
+            });
+
+            const sortedRows = Array.from(rowsMap.keys()).sort((a, b) => a - b);
+
+            sortedRows.forEach(row => {
+                const rowDiv = document.createElement("div");
+                rowDiv.className = "seat-row";
+
+                const rowLabel = document.createElement("span");
+                rowLabel.className = "seat-row-label";
+                rowLabel.textContent = row;
+                rowDiv.appendChild(rowLabel);
+
+                const seatsInRow = rowsMap.get(row);
+
+                SEAT_COLUMNS.forEach(col => {
+                    const hasSeat = seatsInRow.some(s => s.seatColumn === col);
+
+                    if (hasSeat) {
+                        const seatDiv = document.createElement("div");
+                        seatDiv.className = "seat";
+                        seatDiv.textContent = col;
+                        seatDiv.dataset.row = row;
+                        seatDiv.dataset.col = col;
+
+                        const key = `${row}-${col}`;
+
+                        seatDiv.addEventListener("click", () => {
+                            if (seatDiv.classList.contains("occupied")) return;
+
+                            const passengerCount = parseInt(passengerCountSelect.value, 10);
+
+                            if (selectedSeatKeys.has(key)) {
+                                selectedSeatKeys.delete(key);
+                                seatDiv.classList.remove("selected");
+                                return;
+                            }
+
+                            if (selectedSeatKeys.size >= passengerCount) {
+                                msgDiv.textContent = "選取座位數不能超過乘客人數。";
+                                return;
+                            }
+
+                            selectedSeatKeys.add(key);
+                            seatDiv.classList.add("selected");
+                            msgDiv.textContent = "";
+                        });
+
+                        rowDiv.appendChild(seatDiv);
+                    } else {
+                        const ph = document.createElement("div");
+                        ph.className = "seat placeholder";
+                        rowDiv.appendChild(ph);
+                    }
+                });
+
+                seatGridDiv.appendChild(rowDiv);
+            });
+        }
+
+        async function refreshSeatOccupancy() {
+            occupiedSeatKeys.clear();
+
+            const url = getUrl();
+            const trainId = safeIntParam(url, "trainId");
+            let travelDate = url.searchParams.get("travelDate");
+            const departDateTime = url.searchParams.get("departDateTime");
+
+            if (!travelDate && departDateTime) {
+                const d = new Date(departDateTime);
+                travelDate = d.toISOString().substring(0, 10);
+            }
+
+            if (trainId == null || !travelDate) return;
+
+            const carNumber = parseInt(carNumberSelect.value, 10);
+
+            try {
+                const resp = await fetch(`/api/orders/seatStatus?trainId=${trainId}&travelDate=${encodeURIComponent(travelDate)}&carNumber=${carNumber}`, {
+                    headers: getAuthHeaders()
+                });
+
+                if (!resp.ok) return;
+
+                const data = await resp.json();
+                data.forEach(s => {
+                    const key = `${s.seatRow}-${s.seatColumn}`;
+                    occupiedSeatKeys.add(key);
+                });
+
+                document.querySelectorAll(".seat").forEach(div => {
+                    if (div.classList.contains("placeholder")) return;
+
+                    const key = `${div.dataset.row}-${div.dataset.col}`;
+                    if (occupiedSeatKeys.has(key)) {
+                        div.classList.add("occupied");
+                        div.classList.remove("selected");
+                        selectedSeatKeys.delete(key);
+                    } else {
+                        div.classList.remove("occupied");
+                    }
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function clearSeatSelection() {
+            selectedSeatKeys.clear();
+            document.querySelectorAll(".seat.selected").forEach(div => {
+                div.classList.remove("selected");
+            });
+            msgDiv.textContent = "";
+        }
+
+        function buildPassengerInputs() {
+            passengerListDiv.innerHTML = "";
+            const count = parseInt(passengerCountSelect.value, 10);
+
+            for (let i = 0; i < count; i++) {
+                const div = document.createElement("div");
+                div.className = "passenger-item";
+                div.innerHTML = `
+                        乘客 ${i + 1}：
+                        <input type="text" placeholder="姓名" data-passenger-index="${i}" class="passenger-name" />
+                        <select data-passenger-index="${i}" class="passenger-type">
+                            <option value="Adult">全票</option>
+                            <option value="Senior">敬老票</option>
+                            <option value="Love">愛心票</option>
+                            <option value="Child">孩童票</option>
+                            <option value="FreeChild">免票兒童</option>
+                        </select>
+                    `;
+                passengerListDiv.appendChild(div);
+            }
+        }
+
+        function parseSelectedSeatsSorted() {
+            const list = Array.from(selectedSeatKeys).map(key => {
+                const [rowStr, col] = key.split("-");
+                const row = parseInt(rowStr, 10);
+                return { row, col };
+            });
+
+            list.sort((a, b) => {
+                if (a.row !== b.row) return a.row - b.row;
+                return SEAT_COLUMNS.indexOf(a.col) - SEAT_COLUMNS.indexOf(b.col);
+            });
+            return list;
+        }
+
+        function autoFillSeatsIfNeeded(passengerCount, preference) {
+            const current = parseSelectedSeatsSorted();
+            if (current.length >= passengerCount) return current;
+
+            const needed = passengerCount - current.length;
+            const currentKeys = new Set(current.map(s => `${s.row}-${s.col}`));
+
+            const allSeats = seatLayout.map(s => {
+                const key = `${s.seatRow}-${s.seatColumn}`;
+                return {
+                    row: s.seatRow,
+                    col: s.seatColumn,
+                    key,
+                    isWindow: !!s.isWindow,
+                    isAisle: !!s.isAisle
+                };
+            }).filter(s => {
+                if (occupiedSeatKeys.has(s.key)) return false;
+                if (currentKeys.has(s.key)) return false;
+                return true;
+            });
+
+            const isWindow = s =>
+                s.isWindow || (s.col === "A" || s.col === "E");
+            const isAisle = s =>
+                s.isAisle || (s.col === "B" || s.col === "D");
+
+            let preferred = allSeats;
+            if (preference === "window") {
+                preferred = allSeats.filter(isWindow);
+            } else if (preference === "aisle") {
+                preferred = allSeats.filter(isAisle);
+            }
+
+            const picked = [];
+            for (const s of preferred) {
+                picked.push(s);
+                if (picked.length >= needed) break;
+            }
+            if (picked.length < needed) {
+                for (const s of allSeats) {
+                    if (picked.find(p => p.key === s.key)) continue;
+                    picked.push(s);
+                    if (picked.length >= needed) break;
+                }
+            }
+
+            if (picked.length < needed) {
+                return current;
+            }
+
+            picked.forEach(s => {
+                selectedSeatKeys.add(s.key);
+                const selector = `.seat[data-row="${s.row}"][data-col="${s.col}"]`;
+                const seatDiv = document.querySelector(selector);
+                if (seatDiv) seatDiv.classList.add("selected");
+            });
+
+            const result = current.concat(picked.map(s => ({ row: s.row, col: s.col })));
+            result.sort((a, b) => {
+                if (a.row !== b.row) return a.row - b.row;
+                return SEAT_COLUMNS.indexOf(a.col) - SEAT_COLUMNS.indexOf(b.col);
+            });
+            return result;
+        }
+
+        // 取得目前這張票的基本資訊（給查詢回程用）
+        function getCurrentTripParams() {
+            const url = getUrl();
+            const trainId = safeIntParam(url, "trainId");
+            const trainNo = url.searchParams.get("trainNo");
+            const fromStationId = safeIntParam(url, "fromStationId");
+            const toStationId = safeIntParam(url, "toStationId");
+            let travelDate = url.searchParams.get("travelDate");
+            const departDateTime = url.searchParams.get("departDateTime");
+            const arriveDateTime = url.searchParams.get("arriveDateTime");
+
+            if (!travelDate && departDateTime) {
+                const d = new Date(departDateTime);
+                travelDate = d.toISOString().substring(0, 10);
+            }
+
+            return {
+                trainId,
+                trainNo,
+                fromStationId,
+                toStationId,
+                travelDate,
+                departDateTime,
+                arriveDateTime
+            };
+        }
+
+        // 產生回程查詢的 index.html URL
+        function buildReturnSearchUrl() {
+            const p = getCurrentTripParams();
+            if (!p.fromStationId || !p.toStationId || !p.travelDate) {
+                return "index.html";
+            }
+
+            const fromId = p.toStationId; // 回程出發 = 原到達
+            const toId = p.fromStationId; // 回程到達 = 原出發
+
+            let timeFrom = "";
+            if (p.arriveDateTime) {
+                const a = new Date(p.arriveDateTime);
+                timeFrom = a.toTimeString().substring(0, 5);
+            } else if (p.departDateTime) {
+                const d = new Date(p.departDateTime);
+                timeFrom = d.toTimeString().substring(0, 5);
+            }
+
+            const url = new URL("index.html", window.location.origin);
+            url.searchParams.set("fromStationId", fromId);
+            url.searchParams.set("toStationId", toId);
+            url.searchParams.set("travelDate", p.travelDate);
+            if (timeFrom) {
+                url.searchParams.set("timeFrom", timeFrom);
+                url.searchParams.set("timeTo", "23:59");
+            }
+            url.searchParams.set("autoSearch", "1");
+            return url.toString();
+        }
+
+        function mapPassengerTypeToText(type) {
+            switch (type) {
+                case "Adult": return "全票";
+                case "Senior": return "敬老票";
+                case "Love": return "愛心票";
+                case "Child": return "孩童票";
+                case "FreeChild": return "免票兒童";
+                default: return type;
+            }
+        }
+
+        function renderPriceSummary(tickets, totalAmount) {
+            if (!Array.isArray(tickets) || tickets.length === 0) {
+                priceSummaryDiv.innerHTML = "";
+                return;
+            }
+
+            let rowsHtml = tickets.map(t => {
+                const seatText = `${t.carNumber}車${t.seatRow}${t.seatColumn}`;
+                const typeText = mapPassengerTypeToText(t.passengerType);
+                const priceText = (t.price ?? 0).toLocaleString("zh-TW");
+                return `
+                        <tr>
+                            <td>${t.passengerName}</td>
+                            <td>${typeText}</td>
+                            <td>${seatText}</td>
+                            <td>${priceText}</td>
+                        </tr>
+                    `;
+            }).join("");
+
+            const totalText = (totalAmount ?? 0).toLocaleString("zh-TW");
+
+            priceSummaryDiv.innerHTML = `
+                    <div><strong>票價明細：</strong></div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>乘客</th>
+                                <th>票種</th>
+                                <th>座位</th>
+                                <th>金額</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="3" style="text-align:right;">合計</th>
+                                <th>${totalText}</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                `;
+        }
+
+        submitOrderBtn.addEventListener("click", async () => {
+            msgDiv.textContent = "";
+            successDiv.textContent = "";
+            priceSummaryDiv.innerHTML = "";
+            searchReturnBtn.style.display = "none";
+
+            const auth = getAuth();
+            if (!auth || !auth.token) {
+                alert("登入已失效，請重新登入");
+                window.location.href = "login.html";
+                return;
+            }
+
+            const url = getUrl();
+            const trainId = safeIntParam(url, "trainId");
+            const fromStationId = safeIntParam(url, "fromStationId");
+            const toStationId = safeIntParam(url, "toStationId");
+            let travelDate = url.searchParams.get("travelDate");
+            const departDateTime = url.searchParams.get("departDateTime");
+
+            if (!travelDate && departDateTime) {
+                const d = new Date(departDateTime);
+                travelDate = d.toISOString().substring(0, 10);
+            }
+
+            if (trainId == null || fromStationId == null || toStationId == null || !travelDate) {
+                msgDiv.textContent = "車次或站點資訊不足，請從首頁重新查詢。";
+                return;
+            }
+
+            const passengerCount = parseInt(passengerCountSelect.value, 10);
+            const nameInputs = document.querySelectorAll("input.passenger-name");
+            const typeSelects = document.querySelectorAll("select.passenger-type");
+
+            const preference = seatPreferenceSelect.value;
+            let seats = parseSelectedSeatsSorted();
+            seats = autoFillSeatsIfNeeded(passengerCount, preference);
+
+            if (seats.length < passengerCount) {
+                msgDiv.textContent = "可用座位不足，請更換車廂或減少人數。";
+                return;
+            }
+
+            const passengers = [];
+            for (let i = 0; i < passengerCount; i++) {
+                const name = nameInputs[i].value.trim();
+                const type = typeSelects[i].value;
+                if (!name) {
+                    msgDiv.textContent = `請輸入乘客 ${i + 1} 的姓名`;
+                    return;
+                }
+
+                const seat = seats[i];
+                passengers.push({
+                    passengerName: name,
+                    passengerType: type,
+                    carNumber: parseInt(carNumberSelect.value, 10),
+                    seatRow: seat.row,
+                    seatColumn: seat.col
+                });
+            }
+
+            const body = {
+                trainId: trainId,
+                travelDate: travelDate,
+                fromStationId: fromStationId,
+                toStationId: toStationId,
+                passengers: passengers
+            };
+
+            submitOrderBtn.disabled = true;
+            submitOrderBtn.textContent = "送出中...";
+
+            try {
+                const headers = {
+                    "Content-Type": "application/json",
+                    ...getAuthHeaders()
+                };
+
+                const resp = await fetch("/api/orders", {
+                    method: "POST",
+                    headers: headers,
+                    body: JSON.stringify(body)
+                });
+
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    msgDiv.textContent = text || `訂票失敗（HTTP ${resp.status}）`;
+                    return;
+                }
+
+                const data = await resp.json();
+                const totalText = (data.totalAmount ?? 0).toLocaleString("zh-TW");
+                successDiv.textContent = `訂票成功！乘客數：${data.passengerCount}，總金額：${totalText} 元`;
+
+                renderPriceSummary(data.tickets || [], data.totalAmount);
+                searchReturnBtn.style.display = "inline-block";
+
+                clearSeatSelection();
+                refreshSeatOccupancy();
+            } catch (err) {
+                console.error(err);
+                msgDiv.textContent = "送出訂單時發生錯誤";
+            } finally {
+                submitOrderBtn.disabled = false;
+                submitOrderBtn.textContent = "送出訂單";
+            }
+        });
+    </script>
+
+</body>
+</html>

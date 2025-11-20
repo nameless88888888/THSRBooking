@@ -1,0 +1,360 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <title>高鐵訂票系統 - 查詢車次</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+
+        header {
+            background: #1976d2;
+            color: #fff;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: #fff;
+            text-decoration: none;
+            margin-left: 12px;
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+
+            .nav-links a:hover {
+                background: rgba(255,255,255,.15);
+            }
+
+        .userText {
+            font-size: 14px;
+            margin-right: 8px;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 20px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+        label {
+            display: inline-block;
+            width: 80px;
+            margin-right: 4px;
+        }
+
+        select, input[type="date"], input[type="time"], button {
+            padding: 6px 8px;
+            font-size: 14px;
+        }
+
+        button {
+            background: #1976d2;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+            button:hover {
+                background: #0d47a1;
+            }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 14px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 6px 8px;
+            text-align: center;
+        }
+
+        th {
+            background: #eeeeee;
+        }
+
+        .msg {
+            margin-top: 10px;
+            color: red;
+        }
+
+        .link-btn {
+            padding: 4px 10px;
+            font-size: 13px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            background: #43a047;
+            color: #fff;
+        }
+
+            .link-btn:hover {
+                background: #2e7d32;
+            }
+
+        .search-row {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div><strong>高鐵訂票系統</strong></div>
+        <div style="display:flex; align-items:center;">
+            <div id="authArea" style="margin-right: 10px;"></div>
+            <div class="nav-links">
+                <a href="index.html">查詢車次</a>
+                <a href="myorders.html">我的訂單</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <h2>查詢車次</h2>
+
+        <div>
+            <div class="search-row">
+                <label for="fromStationSelect">出發站：</label>
+                <select id="fromStationSelect"></select>
+            </div>
+            <div class="search-row">
+                <label for="toStationSelect">到達站：</label>
+                <select id="toStationSelect"></select>
+            </div>
+            <div class="search-row">
+                <label for="travelDate">日期：</label>
+                <input id="travelDate" type="date" />
+            </div>
+            <div class="search-row">
+                <label>時間區間：</label>
+                <input id="timeFrom" type="time" /> ~
+                <input id="timeTo" type="time" />
+            </div>
+            <div style="margin-top:12px;">
+                <button id="searchBtn">查詢</button>
+            </div>
+        </div>
+
+        <div class="msg" id="msg"></div>
+
+        <table id="resultTable" style="display:none;">
+            <thead>
+                <tr>
+                    <th>車次</th>
+                    <th>出發時間</th>
+                    <th>到達時間</th>
+                    <th>行車時間</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="resultBody"></tbody>
+        </table>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script>
+        const fromSelect = document.getElementById("fromStationSelect");
+        const toSelect = document.getElementById("toStationSelect");
+        const dateInput = document.getElementById("travelDate");
+        const timeFromInput = document.getElementById("timeFrom");
+        const timeToInput = document.getElementById("timeTo");
+        const searchBtn = document.getElementById("searchBtn");
+        const msgDiv = document.getElementById("msg");
+        const tbl = document.getElementById("resultTable");
+        const tbody = document.getElementById("resultBody");
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            refreshAuthUI();
+
+            // 預設日期 = 今天
+            const today = new Date();
+            dateInput.value = today.toISOString().substring(0, 10);
+
+            await loadStations();
+            applyQueryParamsAndMaybeSearch();
+        });
+
+        async function loadStations() {
+            try {
+                const resp = await fetch("/api/stations");
+                if (!resp.ok) {
+                    msgDiv.textContent = "載入車站資料失敗";
+                    return;
+                }
+                const list = await resp.json();
+                fromSelect.innerHTML = "";
+                toSelect.innerHTML = "";
+                for (const s of list) {
+                    const opt1 = document.createElement("option");
+                    opt1.value = s.stationId;
+                    opt1.textContent = s.name;
+                    fromSelect.appendChild(opt1);
+
+                    const opt2 = document.createElement("option");
+                    opt2.value = s.stationId;
+                    opt2.textContent = s.name;
+                    toSelect.appendChild(opt2);
+                }
+            } catch (err) {
+                console.error(err);
+                msgDiv.textContent = "載入車站資料時發生錯誤";
+            }
+        }
+
+        async function doSearch() {
+            msgDiv.textContent = "";
+            tbl.style.display = "none";
+            tbody.innerHTML = "";
+
+            const fromId = parseInt(fromSelect.value, 10);
+            const toId = parseInt(toSelect.value, 10);
+            const date = dateInput.value;
+            const timeFrom = timeFromInput.value || "";
+            const timeTo = timeToInput.value || "";
+
+            if (!fromId || !toId || !date) {
+                msgDiv.textContent = "請選擇出發站、到達站與日期。";
+                return;
+            }
+            if (fromId === toId) {
+                msgDiv.textContent = "出發站與到達站不可相同。";
+                return;
+            }
+
+            try {
+                let url = `/api/trains/search?fromStationId=${fromId}&toStationId=${toId}&travelDate=${encodeURIComponent(date)}`;
+                if (timeFrom) url += `&timeFrom=${encodeURIComponent(timeFrom + ":00")}`;
+                if (timeTo) url += `&timeTo=${encodeURIComponent(timeTo + ":00")}`;
+
+                const resp = await fetch(url);
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    msgDiv.textContent = text || `查詢失敗（HTTP ${resp.status}）`;
+                    return;
+                }
+
+                const data = await resp.json();
+                if (!data || data.length === 0) {
+                    msgDiv.textContent = "查無對應車次。";
+                    return;
+                }
+
+                for (const item of data) {
+                    const tr = document.createElement("tr");
+
+                    const depart = new Date(item.departDateTime);
+                    const arrive = new Date(item.arriveDateTime);
+
+                    const departStr = depart.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
+                    const arriveStr = arrive.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
+
+                    const dur = item.durationMinutes ?? Math.round((arrive - depart) / 60000);
+
+                    tr.innerHTML = `
+                        <td>${item.trainNo}</td>
+                        <td>${departStr}</td>
+                        <td>${arriveStr}</td>
+                        <td>${dur} 分</td>
+                        <td>
+                            <button class="link-btn"
+                                data-train-id="${item.trainId}"
+                                data-train-no="${item.trainNo}"
+                                data-depart="${item.departDateTime}"
+                                data-arrive="${item.arriveDateTime}">
+                                訂票
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+
+                tbl.style.display = "";
+            } catch (err) {
+                console.error(err);
+                msgDiv.textContent = "查詢車次時發生錯誤。";
+            }
+        }
+
+        searchBtn.addEventListener("click", () => {
+            doSearch();
+        });
+
+        // 點擊「訂票」按鈕 → 跳轉 booking.html
+        tbody.addEventListener("click", (e) => {
+            const btn = e.target.closest("button.link-btn");
+            if (!btn) return;
+
+            const trainId = btn.dataset.trainId;
+            const trainNo = btn.dataset.trainNo;
+            const depart = btn.dataset.depart;
+            const arrive = btn.dataset.arrive;
+            const fromId = fromSelect.value;
+            const toId = toSelect.value;
+            const date = dateInput.value;
+
+            const url = new URL("booking.html", window.location.origin);
+            url.searchParams.set("trainId", trainId);
+            url.searchParams.set("trainNo", trainNo);
+            url.searchParams.set("fromStationId", fromId);
+            url.searchParams.set("toStationId", toId);
+            url.searchParams.set("travelDate", date);
+            url.searchParams.set("departDateTime", depart);
+            url.searchParams.set("arriveDateTime", arrive);
+
+            window.location.href = url.toString();
+        });
+
+        // 讀取 query string，支援從 booking.html 帶參數回來自動查詢回程
+        function applyQueryParamsAndMaybeSearch() {
+            const url = new URL(window.location.href);
+            const qs = url.searchParams;
+
+            const fromStationId = qs.get("fromStationId");
+            const toStationId = qs.get("toStationId");
+            const travelDate = qs.get("travelDate");
+            const timeFrom = qs.get("timeFrom");
+            const timeTo = qs.get("timeTo");
+            const autoSearch = qs.get("autoSearch");
+
+            if (fromStationId) fromSelect.value = fromStationId;
+            if (toStationId) toSelect.value = toStationId;
+            if (travelDate) dateInput.value = travelDate;
+
+            if (timeFrom) {
+                timeFromInput.value = timeFrom.length === 5 ? timeFrom : timeFrom.substring(0, 5);
+            }
+            if (timeTo) {
+                timeToInput.value = timeTo.length === 5 ? timeTo : timeTo.substring(0, 5);
+            }
+
+            if (autoSearch === "1") {
+                // 清掉 autoSearch，避免重新整理又觸發一次
+                qs.delete("autoSearch");
+                const newUrl = url.pathname + (qs.toString() ? "?" + qs.toString() : "");
+                window.history.replaceState({}, "", newUrl);
+                doSearch();
+            }
+        }
+    </script>
+
+</body>
+</html>

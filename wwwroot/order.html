@@ -1,0 +1,233 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <title>訂單明細 - 高鐵訂票系統</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            margin: 0;
+            background: #f5f5f5;
+        }
+
+        header {
+            background: #1976d2;
+            color: #fff;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: #fff;
+            margin-left: 10px;
+            text-decoration: none;
+        }
+
+            .nav-links a:hover {
+                text-decoration: underline;
+            }
+
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+        .info-row {
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+
+        .info-label {
+            display: inline-block;
+            width: 90px;
+            color: #555;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            margin-top: 12px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 6px 8px;
+            text-align: center;
+        }
+
+        th {
+            background: #f0f0f0;
+        }
+
+        #msg {
+            margin-top: 10px;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div><strong>高鐵訂票系統 - 訂單明細</strong></div>
+        <div style="display:flex; align-items:center;">
+            <div id="authArea" style="margin-right: 10px;"></div>
+            <div class="nav-links">
+                <a href="index.html">查詢車次</a>
+                <a href="myorders.html">我的訂單</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <h2>訂單明細</h2>
+
+        <div id="orderSummary"></div>
+
+        <h3>乘客與票價</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>乘客</th>
+                    <th>票種</th>
+                    <th>座位</th>
+                    <th>金額</th>
+                </tr>
+            </thead>
+            <tbody id="ticketBody">
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="3" style="text-align:right;">合計</th>
+                    <th id="totalAmountCell"></th>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div id="msg"></div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script>
+        const orderSummaryDiv = document.getElementById("orderSummary");
+        const ticketBody = document.getElementById("ticketBody");
+        const totalAmountCell = document.getElementById("totalAmountCell");
+        const msgDiv = document.getElementById("msg");
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const auth = getAuth();
+            refreshAuthUI();
+
+            if (!auth || !auth.token) {
+                alert("請先登入再查看訂單");
+                window.location.href = "login.html";
+                return;
+            }
+
+            const url = new URL(window.location.href);
+            const orderIdStr = url.searchParams.get("orderId");
+            const orderId = orderIdStr ? parseInt(orderIdStr, 10) : NaN;
+
+            if (!orderId || Number.isNaN(orderId)) {
+                msgDiv.textContent = "缺少訂單編號。";
+                return;
+            }
+
+            loadOrder(orderId);
+        });
+
+        function mapPassengerTypeToText(type) {
+            switch (type) {
+                case "Adult": return "全票";
+                case "Senior": return "敬老票";
+                case "Love": return "愛心票";
+                case "Child": return "孩童票";
+                case "FreeChild": return "免票兒童";
+                default: return type;
+            }
+        }
+
+        async function loadOrder(orderId) {
+            msgDiv.textContent = "";
+            orderSummaryDiv.innerHTML = "";
+            ticketBody.innerHTML = "";
+            totalAmountCell.textContent = "";
+
+            try {
+                const resp = await fetch(`/api/orders/${orderId}`, {
+                    headers: getAuthHeaders()
+                });
+
+                if (resp.status === 404) {
+                    msgDiv.textContent = "找不到此訂單或無權限查看。";
+                    return;
+                }
+
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    msgDiv.textContent = text || `讀取訂單失敗（HTTP ${resp.status}）`;
+                    return;
+                }
+
+                const o = await resp.json();
+
+                const travelDateStr = (o.travelDate || "").substring(0, 10);
+                const createdAtStr = o.createdAt
+                    ? o.createdAt.replace("T", " ").substring(0, 19)
+                    : "";
+
+                const totalText = ((o.totalAmount ?? 0)).toLocaleString("zh-TW");
+
+                orderSummaryDiv.innerHTML = `
+                    <div class="info-row"><span class="info-label">訂單編號：</span><span>${o.orderNumber}</span></div>
+                    <div class="info-row"><span class="info-label">車次：</span><span>${o.trainNo}</span></div>
+                    <div class="info-row"><span class="info-label">日期：</span><span>${travelDateStr}</span></div>
+                    <div class="info-row"><span class="info-label">起訖站：</span><span>${o.fromStationName} → ${o.toStationName}</span></div>
+                    <div class="info-row"><span class="info-label">狀態：</span><span>${o.status}</span></div>
+                    <div class="info-row"><span class="info-label">建立時間：</span><span>${createdAtStr}</span></div>
+                    <div class="info-row"><span class="info-label">總金額：</span><span>${totalText} 元</span></div>
+                `;
+
+                if (Array.isArray(o.tickets) && o.tickets.length > 0) {
+                    let rowsHtml = "";
+                    for (const t of o.tickets) {
+                        const seatText = `${t.carNumber}車${t.seatRow}${t.seatColumn}`;
+                        const typeText = mapPassengerTypeToText(t.passengerType);
+                        const priceText = ((t.price ?? 0)).toLocaleString("zh-TW");
+                        rowsHtml += `
+                            <tr>
+                                <td>${t.passengerName}</td>
+                                <td>${typeText}</td>
+                                <td>${seatText}</td>
+                                <td>${priceText}</td>
+                            </tr>
+                        `;
+                    }
+                    ticketBody.innerHTML = rowsHtml;
+                } else {
+                    ticketBody.innerHTML = `
+                        <tr><td colspan="4">此訂單沒有乘客資料</td></tr>
+                    `;
+                }
+
+                totalAmountCell.textContent = totalText;
+            } catch (err) {
+                console.error(err);
+                msgDiv.textContent = "讀取訂單時發生錯誤";
+            }
+        }
+    </script>
+
+</body>
+</html>

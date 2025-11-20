@@ -1,0 +1,112 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <title>註冊 - 高鐵訂票系統</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 60px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,.1);
+        }
+
+        input, button {
+            padding: 8px;
+            width: 100%;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        button {
+            background: #43a047;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+
+            button:hover {
+                background: #2e7d32;
+            }
+
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+
+        a {
+            color: #1976d2;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>註冊會員</h2>
+
+        <input type="text" id="regName" placeholder="姓名" />
+        <input type="email" id="regEmail" placeholder="Email" />
+        <input type="password" id="regPassword" placeholder="密碼" />
+        <input type="text" id="regPhone" placeholder="手機（可留空）" />
+        <button id="registerBtn">註冊</button>
+
+        <div id="regError" class="error"></div>
+
+        <p>已經有帳號？<a href="login.html">回登入</a></p>
+        <p><a href="index.html">回首頁</a></p>
+    </div>
+
+    <script>
+    const regName = document.getElementById("regName");
+    const regEmail = document.getElementById("regEmail");
+    const regPassword = document.getElementById("regPassword");
+    const regPhone = document.getElementById("regPhone");
+    const registerBtn = document.getElementById("registerBtn");
+    const regError = document.getElementById("regError");
+
+    registerBtn.addEventListener("click", async () => {
+        regError.textContent = "";
+
+        const name = regName.value.trim();
+        const email = regEmail.value.trim();
+        const password = regPassword.value;
+        const phone = regPhone.value.trim();
+
+        if (!name || !email || !password) {
+            regError.textContent = "請輸入完整資料（姓名、Email、密碼）";
+            return;
+        }
+
+        try {
+            const resp = await fetch("/api/auth/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, email, password, phone })
+            });
+
+            if (!resp.ok) {
+                const text = await resp.text();
+                regError.textContent = text || "註冊失敗";
+                return;
+            }
+
+            // ✅ 註冊成功 → 直接導向登入頁
+            alert("註冊成功！請使用帳號密碼登入。");
+            window.location.href = "login.html";
+        } catch (err) {
+            console.error(err);
+            regError.textContent = "註冊時發生錯誤";
+        }
+    });
+    </script>
+</body>
+</html>

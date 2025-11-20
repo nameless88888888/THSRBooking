@@ -1,0 +1,167 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <title>我的訂單 - 高鐵訂票系統</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            margin: 20px;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        table {
+            border-collapse: collapse;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 6px 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        #message {
+            margin-top: 10px;
+            color: red;
+        }
+
+        .top-bar {
+            text-align: right;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 4px 8px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <span id="welcomeText"></span>
+        <button onclick="goSearch()">回到查詢</button>
+        <button onclick="logout()">登出</button>
+    </div>
+
+    <h1>我的訂單</h1>
+
+    <div id="message"></div>
+
+    <table id="orderTable" style="display:none;">
+        <thead>
+            <tr>
+                <th>訂單編號</th>
+                <th>訂單時間</th>
+                <th>車次</th>
+                <th>起訖站</th>
+                <th>出發時間</th>
+                <th>總金額</th>
+                <th>狀態</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody id="orderBody">
+        </tbody>
+    </table>
+
+    <script>
+        const apiBase = "";
+
+        const userId = localStorage.getItem("userId");
+        const userName = localStorage.getItem("userName");
+
+        if (!userId) {
+            window.location.href = "login.html";
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const welcome = document.getElementById("welcomeText");
+            if (welcome && userName) {
+                welcome.textContent = `歡迎，${userName}`;
+            }
+            loadOrders();
+        });
+
+        function goSearch() {
+            window.location.href = "index.html";
+        }
+
+        function logout() {
+            localStorage.removeItem("userId");
+            localStorage.removeItem("userName");
+            localStorage.removeItem("userEmail");
+            window.location.href = "login.html";
+        }
+
+        async function loadOrders() {
+            const msg = document.getElementById("message");
+            const table = document.getElementById("orderTable");
+            const tbody = document.getElementById("orderBody");
+            msg.textContent = "";
+            tbody.innerHTML = "";
+            table.style.display = "none";
+
+            try {
+                const res = await fetch(`${apiBase}/api/orders?userId=${userId}`);
+                if (!res.ok) {
+                    const text = await res.text();
+                    msg.textContent = "載入訂單失敗：" + text;
+                    return;
+                }
+
+                const orders = await res.json();
+                if (!orders || orders.length === 0) {
+                    msg.textContent = "目前沒有任何訂單。";
+                    return;
+                }
+
+                orders.forEach(o => {
+                    const tr = document.createElement("tr");
+
+                    const orderTime = new Date(o.orderTime);
+                    const depTime = new Date(o.departureTime);
+
+                    const fmtDateTime = dt =>
+                        dt.getFullYear() + "-" +
+                        (dt.getMonth() + 1).toString().padStart(2, '0') + "-" +
+                        dt.getDate().toString().padStart(2, '0') + " " +
+                        dt.getHours().toString().padStart(2, '0') + ":" +
+                        dt.getMinutes().toString().padStart(2, '0');
+
+                    tr.innerHTML = `
+                        <td>${o.orderId}</td>
+                        <td>${fmtDateTime(orderTime)}</td>
+                        <td>${o.trainNo}</td>
+                        <td>${o.departureStation} → ${o.arrivalStation}</td>
+                        <td>${fmtDateTime(depTime)}</td>
+                        <td>${o.totalAmount}</td>
+                        <td>${o.status}</td>
+                        <td>
+                            <button onclick="viewDetail(${o.orderId})">查看</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                table.style.display = "";
+            } catch (err) {
+                msg.textContent = "載入訂單時發生錯誤：" + err.message;
+            }
+        }
+
+        function viewDetail(orderId) {
+            window.location.href = `orderDetail.html?orderId=${orderId}`;
+        }
+    </script>
+</body>
+</html>

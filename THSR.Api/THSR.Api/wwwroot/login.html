@@ -1,0 +1,110 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <title>登入 - 高鐵訂票系統</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .form-row {
+            margin-bottom: 10px;
+        }
+
+        label {
+            display: inline-block;
+            width: 80px;
+        }
+
+        input {
+            padding: 4px;
+            min-width: 200px;
+        }
+
+        button {
+            padding: 6px 12px;
+            cursor: pointer;
+        }
+
+        #message {
+            margin-top: 10px;
+            color: red;
+        }
+
+        a {
+            color: blue;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>會員登入</h1>
+
+    <div class="form-row">
+        <label for="email">Email：</label>
+        <input id="email" type="email" />
+    </div>
+    <div class="form-row">
+        <label for="password">密碼：</label>
+        <input id="password" type="password" />
+    </div>
+    <div class="form-row">
+        <button id="loginBtn">登入</button>
+    </div>
+    <div id="message"></div>
+
+    <p>還沒有帳號？<a href="register.html">前往註冊</a></p>
+
+    <script>
+        const apiBase = "";
+
+        async function login() {
+            const email = document.getElementById("email").value.trim();
+            const pwd = document.getElementById("password").value;
+            const msg = document.getElementById("message");
+            msg.textContent = "";
+
+            if (!email || !pwd) {
+                msg.textContent = "請輸入 Email 和密碼。";
+                return;
+            }
+
+            try {
+                const res = await fetch(apiBase + "/api/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        email: email,
+                        password: pwd
+                    })
+                });
+
+                if (!res.ok) {
+                    const text = await res.text();
+                    msg.textContent = "登入失敗：" + text;
+                    return;
+                }
+
+                const data = await res.json();
+
+                // 把登入資訊存到 localStorage
+                localStorage.setItem("userId", data.userId);
+                localStorage.setItem("userName", data.name);
+                localStorage.setItem("userEmail", data.email);
+
+                alert("登入成功，歡迎 " + data.name + "！");
+                window.location.href = "index.html"; // 回到查車次主畫面
+
+            } catch (err) {
+                msg.textContent = "登入時發生錯誤：" + err.message;
+            }
+        }
+
+        document.getElementById("loginBtn").addEventListener("click", login);
+    </script>
+</body>
+</html>

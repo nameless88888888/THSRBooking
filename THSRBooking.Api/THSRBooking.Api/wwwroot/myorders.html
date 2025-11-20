@@ -1,0 +1,618 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <title>我的訂單 - 高鐵訂票系統</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            margin: 0;
+            background: #f5f5f5;
+        }
+
+        header {
+            background: #1976d2;
+            color: #fff;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: #fff;
+            margin-left: 10px;
+            text-decoration: none;
+        }
+
+            .nav-links a:hover {
+                text-decoration: underline;
+            }
+
+        a.btn {
+            color: white;
+            padding: 6px 14px;
+            background: #1565c0;
+            border-radius: 4px;
+            text-decoration: none;
+        }
+
+            a.btn:hover {
+                background: #0d47a1;
+            }
+
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 6px 8px;
+            text-align: center;
+        }
+
+        th {
+            background: #f0f0f0;
+        }
+
+        .badge-confirmed {
+            display: inline-block;
+            min-width: 72px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .badge-cancelled {
+            display: inline-block;
+            min-width: 72px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        button.btn-cancel {
+            padding: 4px 10px;
+            font-size: 13px;
+            background: #e53935;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+            button.btn-cancel[disabled] {
+                opacity: .6;
+                cursor: default;
+            }
+
+        button.btn-edit {
+            padding: 4px 10px;
+            font-size: 13px;
+            background: #1976d2;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 4px;
+        }
+
+            button.btn-edit[disabled] {
+                opacity: .6;
+                cursor: default;
+            }
+
+        #msg {
+            margin-top: 10px;
+            color: red;
+        }
+
+        /* 編輯區塊樣式 */
+        .edit-section {
+            margin-top: 24px;
+            border-top: 1px solid #ddd;
+            padding-top: 16px;
+        }
+
+        .info-row {
+            margin-bottom: 6px;
+        }
+
+        .info-label {
+            display: inline-block;
+            width: 80px;
+            color: #555;
+        }
+
+        #editTicketTable {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+            #editTicketTable th,
+            #editTicketTable td {
+                border: 1px solid #ddd;
+                padding: 6px 8px;
+                text-align: center;
+            }
+
+            #editTicketTable th {
+                background: #f0f0f0;
+            }
+
+        input.passenger-name-input, select.passenger-type-select {
+            padding: 4px 6px;
+            font-size: 13px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        #editMsg {
+            margin-top: 6px;
+            color: red;
+        }
+
+        #editSuccess {
+            margin-top: 6px;
+            color: green;
+        }
+
+        .edit-buttons {
+            margin-top: 10px;
+            text-align: right;
+        }
+
+        .btn-save {
+            padding: 6px 12px;
+            font-size: 14px;
+            background: #43a047;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+            .btn-save:hover {
+                background: #2e7d32;
+            }
+
+        .btn-cancel-edit {
+            padding: 6px 12px;
+            font-size: 14px;
+            background: #9e9e9e;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+
+            .btn-cancel-edit:hover {
+                background: #757575;
+            }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div><strong>高鐵訂票系統 - 我的訂單</strong></div>
+        <div style="display:flex; align-items:center;">
+            <div id="authArea" style="margin-right: 10px;"></div>
+            <div class="nav-links">
+                <a href="index.html">查詢車次</a>
+                <a href="myorders.html">我的訂單</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <h2>我的訂單</h2>
+        <table>
+            <thead>
+                <tr>
+                    <!-- 不再顯示訂單編號 -->
+                    <th>車次</th>
+                    <th>日期</th>
+                    <th>出發站</th>
+                    <th>到達站</th>
+                    <th>乘客 / 座位</th>
+                    <th>狀態</th>
+                    <th>建立時間</th>
+                    <th>總金額</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="ordersBody">
+            </tbody>
+        </table>
+        <div id="msg"></div>
+
+        <!-- 編輯區塊：點某筆訂單的「修改」後出現 -->
+        <div id="editSection" class="edit-section" style="display:none;">
+            <h3>修改訂單</h3>
+
+            <div id="editOrderInfo"></div>
+
+            <table id="editTicketTable">
+                <thead>
+                    <tr>
+                        <th>乘客姓名</th>
+                        <th>票種</th>
+                        <th>車廂</th>
+                        <th>座位</th>
+                        <th>金額</th>
+                    </tr>
+                </thead>
+                <tbody id="editTicketBody">
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="4" style="text-align:right;">合計：</td>
+                        <td id="editTotalAmount">0</td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <div id="editMsg"></div>
+            <div id="editSuccess"></div>
+
+            <div class="edit-buttons">
+                <button id="btnSaveEdit" class="btn-save">儲存變更</button>
+                <button id="btnCancelEdit" class="btn-cancel-edit">取消修改</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script>
+        const tbody = document.getElementById("ordersBody");
+        const msgDiv = document.getElementById("msg");
+
+        const editSection = document.getElementById("editSection");
+        const editOrderInfoDiv = document.getElementById("editOrderInfo");
+        const editTicketBody = document.getElementById("editTicketBody");
+        const editTotalAmountCell = document.getElementById("editTotalAmount");
+        const editMsgDiv = document.getElementById("editMsg");
+        const editSuccessDiv = document.getElementById("editSuccess");
+        const btnSaveEdit = document.getElementById("btnSaveEdit");
+        const btnCancelEdit = document.getElementById("btnCancelEdit");
+
+        let currentEditOrderId = null;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const auth = getAuth();
+            refreshAuthUI();
+
+            if (!auth || !auth.token) {
+                alert("請先登入再查看訂單");
+                window.location.href = "login.html";
+                return;
+            }
+
+            loadOrders();
+
+            btnSaveEdit.addEventListener("click", saveEdit);
+            btnCancelEdit.addEventListener("click", () => {
+                currentEditOrderId = null;
+                editSection.style.display = "none";
+                editMsgDiv.textContent = "";
+                editSuccessDiv.textContent = "";
+            });
+        });
+
+        async function loadOrders() {
+            tbody.innerHTML = "";
+            msgDiv.textContent = "";
+
+            try {
+                const resp = await fetch("/api/orders/my", {
+                    headers: getAuthHeaders()
+                });
+
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    msgDiv.textContent = text || `讀取訂單失敗（HTTP ${resp.status}）`;
+                    return;
+                }
+
+                const data = await resp.json(); // List<OrderSummaryDto>
+                if (!Array.isArray(data) || data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="9">目前沒有訂單</td></tr>`;
+                    return;
+                }
+
+                for (const o of data) {
+                    const tr = document.createElement("tr");
+
+                    const passengerSeats = o.passengerSeats || "";
+                    const totalAmount = o.totalAmount != null ? o.totalAmount : 0;
+
+                    tr.innerHTML = `
+                            <td>${o.trainNo}</td>
+                            <td>${o.travelDate.substring(0, 10)}</td>
+                            <td>${o.fromStationName}</td>
+                            <td>${o.toStationName}</td>
+                            <td style="text-align:left;">${passengerSeats}</td>
+                            <td>
+                                ${o.status === "Cancelled"
+                            ? '<span class="badge-cancelled">Cancelled</span>'
+                            : '<span class="badge-confirmed">Confirmed</span>'}
+                            </td>
+                            <td>${o.createdAt.replace('T', ' ').substring(0, 19)}</td>
+                            <td>${totalAmount}</td>
+                            <td>
+                                <button class="btn-edit"
+                                        data-order-id="${o.orderId}"
+                                        ${o.status === "Cancelled" ? "disabled" : ""}>
+                                    修改
+                                </button>
+                                <button class="btn-cancel"
+                                        data-order-id="${o.orderId}"
+                                        ${o.status === "Cancelled" ? "disabled" : ""}>
+                                    取消
+                                </button>
+                            </td>
+                        `;
+
+                    tbody.appendChild(tr);
+                }
+
+                // 綁定取消按鈕
+                tbody.querySelectorAll("button.btn-cancel").forEach(btn => {
+                    btn.addEventListener("click", () => {
+                        const id = btn.getAttribute("data-order-id");
+                        if (!id) return;
+                        if (!confirm("確定要取消這筆訂單嗎？")) return;
+                        cancelOrder(id);
+                    });
+                });
+
+                // 綁定修改按鈕
+                tbody.querySelectorAll("button.btn-edit").forEach(btn => {
+                    btn.addEventListener("click", () => {
+                        const id = btn.getAttribute("data-order-id");
+                        if (!id) return;
+                        loadOrderForEdit(id);
+                    });
+                });
+
+            } catch (err) {
+                console.error(err);
+                msgDiv.textContent = "讀取訂單時發生錯誤";
+            }
+        }
+
+        async function cancelOrder(orderId) {
+            msgDiv.textContent = "";
+
+            try {
+                const resp = await fetch(`/api/orders/${orderId}/cancel`, {
+                    method: "POST",
+                    headers: getAuthHeaders()
+                });
+
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    alert(text || `取消失敗（HTTP ${resp.status}）`);
+                    return;
+                }
+
+                // 取消後重新載入
+                await loadOrders();
+                // 若正在編輯這筆訂單，也關閉編輯區
+                if (currentEditOrderId === parseInt(orderId, 10)) {
+                    currentEditOrderId = null;
+                    editSection.style.display = "none";
+                }
+            } catch (err) {
+                console.error(err);
+                alert("取消訂單時發生錯誤");
+            }
+        }
+
+        // ===== 編輯相關 =====
+
+        function mapServerTypeToOptionValue(pt) {
+            switch (pt) {
+                case "Adult":
+                case "全票":
+                case "成人":
+                    return "Adult";
+                case "Child":
+                case "兒童票":
+                case "孩童":
+                    return "Child";
+                case "Senior":
+                case "敬老票":
+                    return "Senior";
+                case "Love":
+                case "愛心票":
+                    return "Love";
+                case "FreeChild":
+                case "免票兒童":
+                    return "FreeChild";
+                default:
+                    return "Adult";
+            }
+        }
+
+        async function loadOrderForEdit(orderId) {
+            editMsgDiv.textContent = "";
+            editSuccessDiv.textContent = "";
+            editTicketBody.innerHTML = "";
+            editTotalAmountCell.textContent = "0";
+
+            try {
+                const resp = await fetch(`/api/orders/${orderId}`, {
+                    headers: getAuthHeaders()
+                });
+
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    editMsgDiv.textContent = text || `載入訂單失敗（HTTP ${resp.status}）`;
+                    editSection.style.display = "block";
+                    return;
+                }
+
+                const data = await resp.json(); // OrderDetailDto
+
+                currentEditOrderId = data.orderId;
+
+                editOrderInfoDiv.innerHTML = `
+                        <div class="info-row"><span class="info-label">訂單號：</span>${data.orderNumber}</div>
+                        <div class="info-row"><span class="info-label">車次：</span>${data.trainNo}</div>
+                        <div class="info-row"><span class="info-label">日期：</span>${data.travelDate.substring(0, 10)}</div>
+                        <div class="info-row"><span class="info-label">起訖站：</span>${data.fromStationName} → ${data.toStationName}</div>
+                        <div class="info-row"><span class="info-label">狀態：</span>${data.status}</div>
+                    `;
+
+                let total = 0;
+
+                (data.tickets || []).forEach(t => {
+                    const tr = document.createElement("tr");
+                    tr.dataset.ticketId = t.orderTicketId; // 後端 DTO 已加上 OrderTicketId
+
+                    const typeValue = mapServerTypeToOptionValue(t.passengerType);
+
+                    tr.innerHTML = `
+                            <td>
+                                <input type="text"
+                                       class="passenger-name-input"
+                                       value="${t.passengerName || ""}" />
+                            </td>
+                            <td>
+                                <select class="passenger-type-select">
+                                    <option value="Adult"${typeValue === "Adult" ? " selected" : ""}>全票</option>
+                                    <option value="Child"${typeValue === "Child" ? " selected" : ""}>兒童票</option>
+                                    <option value="Senior"${typeValue === "Senior" ? " selected" : ""}>敬老票</option>
+                                    <option value="Love"${typeValue === "Love" ? " selected" : ""}>愛心票</option>
+                                    <option value="FreeChild"${typeValue === "FreeChild" ? " selected" : ""}>免票兒童</option>
+                                </select>
+                            </td>
+                            <td>${t.carNumber} 車</td>
+                            <td>${t.seatRow}${t.seatColumn}</td>
+                            <td class="price-cell">${t.price}</td>
+                        `;
+
+                    editTicketBody.appendChild(tr);
+                    total += t.price;
+                });
+
+                editTotalAmountCell.textContent = total;
+                editSection.style.display = "block";
+            } catch (err) {
+                console.error(err);
+                editMsgDiv.textContent = "載入訂單時發生錯誤";
+                editSection.style.display = "block";
+            }
+        }
+
+        async function saveEdit() {
+            editMsgDiv.textContent = "";
+            editSuccessDiv.textContent = "";
+
+            if (!currentEditOrderId) {
+                editMsgDiv.textContent = "沒有正在編輯的訂單。";
+                return;
+            }
+
+            const rows = editTicketBody.querySelectorAll("tr");
+            if (rows.length === 0) {
+                editMsgDiv.textContent = "沒有可修改的乘客資料。";
+                return;
+            }
+
+            const tickets = [];
+            rows.forEach(tr => {
+                const ticketIdStr = tr.dataset.ticketId;
+                if (!ticketIdStr) return;
+
+                const ticketId = parseInt(ticketIdStr, 10);
+                const nameInput = tr.querySelector(".passenger-name-input");
+                const typeSelect = tr.querySelector(".passenger-type-select");
+
+                const name = (nameInput.value || "").trim();
+                const type = typeSelect.value;
+
+                tickets.push({
+                    orderTicketId: ticketId,
+                    passengerName: name,
+                    passengerType: type
+                });
+            });
+
+            if (tickets.length === 0) {
+                editMsgDiv.textContent = "缺少 ticketId，請確認後端有回傳。";
+                return;
+            }
+
+            btnSaveEdit.disabled = true;
+            btnSaveEdit.textContent = "儲存中...";
+
+            try {
+                const resp = await fetch(`/api/orders/${currentEditOrderId}`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...getAuthHeaders()
+                    },
+                    body: JSON.stringify({ tickets: tickets })
+                });
+
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    editMsgDiv.textContent = text || `更新訂單失敗（HTTP ${resp.status}）`;
+                    return;
+                }
+
+                const data = await resp.json(); // 更新後 OrderDetailDto
+
+                // 用回傳資料更新編輯區顯示的金額
+                const ticketPriceMap = {};
+                (data.tickets || []).forEach(t => {
+                    ticketPriceMap[t.orderTicketId] = t.price;
+                });
+
+                let total = 0;
+                editTicketBody.querySelectorAll("tr").forEach(tr => {
+                    const ticketId = parseInt(tr.dataset.ticketId || "0", 10);
+                    const priceCell = tr.querySelector(".price-cell");
+                    if (ticketPriceMap[ticketId] != null) {
+                        priceCell.textContent = ticketPriceMap[ticketId];
+                        total += ticketPriceMap[ticketId];
+                    }
+                });
+
+                editTotalAmountCell.textContent = total;
+                editSuccessDiv.textContent = "已成功更新訂單！";
+
+                // 重新載入上面的訂單列表，更新總金額
+                await loadOrders();
+            } catch (err) {
+                console.error(err);
+                editMsgDiv.textContent = "儲存變更時發生錯誤";
+            } finally {
+                btnSaveEdit.disabled = false;
+                btnSaveEdit.textContent = "儲存變更";
+            }
+        }
+    </script>
+
+</body>
+</html>

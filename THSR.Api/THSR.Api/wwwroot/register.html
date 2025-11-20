@@ -1,0 +1,126 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <title>註冊 - 高鐵訂票系統</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .form-row {
+            margin-bottom: 10px;
+        }
+
+        label {
+            display: inline-block;
+            width: 80px;
+        }
+
+        input {
+            padding: 4px;
+            min-width: 200px;
+        }
+
+        button {
+            padding: 6px 12px;
+            cursor: pointer;
+        }
+
+        #message {
+            margin-top: 10px;
+            color: red;
+        }
+
+        a {
+            color: blue;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>註冊帳號</h1>
+
+    <div class="form-row">
+        <label for="name">姓名：</label>
+        <input id="name" type="text" />
+    </div>
+    <div class="form-row">
+        <label for="email">Email：</label>
+        <input id="email" type="email" />
+    </div>
+    <div class="form-row">
+        <label for="phone">手機：</label>
+        <input id="phone" type="text" />
+    </div>
+    <div class="form-row">
+        <label for="password">密碼：</label>
+        <input id="password" type="password" />
+    </div>
+    <div class="form-row">
+        <label for="confirm">確認密碼：</label>
+        <input id="confirm" type="password" />
+    </div>
+    <div class="form-row">
+        <button id="registerBtn">註冊</button>
+    </div>
+    <div id="message"></div>
+
+    <p>已經有帳號了？<a href="login.html">前往登入</a></p>
+
+    <script>
+        const apiBase = "";
+
+        async function register() {
+            const name = document.getElementById("name").value.trim();
+            const email = document.getElementById("email").value.trim();
+            const phone = document.getElementById("phone").value.trim();
+            const pwd = document.getElementById("password").value;
+            const confirm = document.getElementById("confirm").value;
+            const msg = document.getElementById("message");
+
+            msg.textContent = "";
+
+            if (!name || !email || !pwd || !confirm) {
+                msg.textContent = "姓名、Email、密碼為必填。";
+                return;
+            }
+            if (pwd !== confirm) {
+                msg.textContent = "兩次輸入的密碼不一致。";
+                return;
+            }
+
+            try {
+                const res = await fetch(apiBase + "/api/auth/register", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: name,
+                        email: email,
+                        password: pwd,
+                        phoneNumber: phone
+                    })
+                });
+
+                if (!res.ok) {
+                    const text = await res.text();
+                    msg.textContent = "註冊失敗：" + text;
+                    return;
+                }
+
+                const data = await res.json();
+                alert("註冊成功！請重新登入。");
+                window.location.href = "login.html";
+
+            } catch (err) {
+                msg.textContent = "註冊時發生錯誤：" + err.message;
+            }
+        }
+
+        document.getElementById("registerBtn").addEventListener("click", register);
+    </script>
+</body>
+</html>

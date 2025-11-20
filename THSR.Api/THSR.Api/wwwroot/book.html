@@ -1,0 +1,190 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <title>訂票 - 高鐵訂票系統</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .form-row {
+            margin-bottom: 10px;
+        }
+
+        label {
+            display: inline-block;
+            width: 100px;
+        }
+
+        input {
+            padding: 4px;
+            min-width: 220px;
+        }
+
+        button {
+            padding: 6px 12px;
+            cursor: pointer;
+        }
+
+        #message {
+            margin-top: 10px;
+            color: red;
+        }
+
+        #success {
+            margin-top: 10px;
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <h1>訂票</h1>
+
+    <div id="trainInfo"></div>
+
+    <h2>乘客資訊</h2>
+    <div class="form-row">
+        <label for="passengerName">姓名：</label>
+        <input id="passengerName" type="text" />
+    </div>
+    <div class="form-row">
+        <label for="passengerPhone">手機：</label>
+        <input id="passengerPhone" type="text" />
+    </div>
+    <div class="form-row">
+        <label for="passengerId">身分證字號：</label>
+        <input id="passengerId" type="text" />
+    </div>
+    <div class="form-row">
+        <label for="seatNumber">座位：</label>
+        <select id="seatNumber"></select>
+    </div>
+
+    <div class="form-row">
+        <span id="seatInfo" style="color:#555;"></span>
+    </div>
+
+    <div class="form-row">
+        <button id="submitBtn">確認訂票</button>
+        <button onclick="goBack()">返回查詢</button>
+    </div>
+
+    <div id="message"></div>
+    <div id="success"></div>
+
+    <script>
+        const apiBase = "";
+
+        function loadTrainInfo() {
+            const trainNo = localStorage.getItem("selectedTrainNo");
+            const dep = localStorage.getItem("selectedDepStation");
+            const arr = localStorage.getItem("selectedArrStation");
+            const depTime = localStorage.getItem("selectedDepTime");
+            const arrTime = localStorage.getItem("selectedArrTime");
+
+            if (!trainNo) {
+                document.getElementById("trainInfo").textContent = "沒有選擇車次，請回到查詢頁。";
+                return;
+            }
+
+            const depDate = new Date(depTime);
+            const arrDate = new Date(arrTime);
+            const format = dt =>
+                dt.getFullYear() + "-" +
+                (dt.getMonth() + 1).toString().padStart(2, '0') + "-" +
+                dt.getDate().toString().padStart(2, '0') + " " +
+                dt.getHours().toString().padStart(2, '0') + ":" +
+                dt.getMinutes().toString().padStart(2, '0');
+
+            const html = `
+                    <h2>車次資訊</h2>
+                    <p>車次：${trainNo}</p>
+                    <p>起站：${dep}，出發時間：${format(depDate)}</p>
+                    <p>訖站：${arr}，到達時間：${format(arrDate)}</p>
+                `;
+            document.getElementById("trainInfo").innerHTML = html;
+
+            // ===== 產生座位選單（簡單版：1~12 排，每排 A~D） =====
+            const seatSelect = document.getElementById("seatNumber");
+            seatSelect.innerHTML = "";
+            const rows = 12;
+            const cols = ["A", "B", "C", "D"];
+
+            for (let r = 1; r <= rows; r++) {
+                for (const c of cols) {
+                    const opt = document.createElement("option");
+                    opt.value = `${r}${c}`;
+                    opt.textContent = `${r}${c}`;
+                    seatSelect.appendChild(opt);
+                }
+            }
+            const remaining = localStorage.getItem("selectedRemainingSeats");
+            const seatInfo = document.getElementById("seatInfo");
+            if (remaining !== null) {
+                seatInfo.textContent = `目前剩餘座位：約 ${remaining} 個（實際以訂票結果為準）`;
+            }
+
+        }
+
+        async function submitOrder() {
+            const msg = document.getElementById("message");
+            const okMsg = document.getElementById("success");
+            msg.textContent = "";
+            okMsg.textContent = "";
+
+            const userId = localStorage.getItem("userId");
+            if (!userId) {
+                msg.textContent = "尚未登入，請先登入。";
+                return;
+            }
+
+            const trainId = localStorage.getItem("selectedTrainId");
+            const passengerName = document.getElementById("passengerName").value.trim();
+            const passengerPhone = document.getElementById("passengerPhone").value.trim();
+            const passengerId = document.getElementById("passengerId").value.trim();
+            const seatNumber = document.getElementById("seatNumber").value.trim();
+
+            if (!trainId || !passengerName) {
+                msg.textContent = "車次或乘客姓名缺少，請確認。";
+                return;
+            }
+
+            try {
+                const res = await fetch(apiBase + "/api/orders", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        userId: parseInt(userId),
+                        trainId: parseInt(trainId),
+                        passengerName: passengerName,
+                        passengerPhone: passengerPhone,
+                        passengerIdNumber: passengerId,
+                        seatNumber: seatNumber
+                    })
+                });
+
+                if (!res.ok) {
+                    const text = await res.text();
+                    msg.textContent = "訂票失敗：" + text;
+                    return;
+                }
+
+                const data = await res.json();
+                okMsg.textContent = `訂票成功！訂單編號：${data.orderId}，座位：${data.seatNumber ?? ''}`;
+            } catch (err) {
+                msg.textContent = "訂票時發生錯誤：" + err.message;
+            }
+        }
+
+        function goBack() {
+            window.location.href = "index.html";
+        }
+
+        document.getElementById("submitBtn").addEventListener("click", submitOrder);
+        loadTrainInfo();
+    </script>
+</body>
+</html>
